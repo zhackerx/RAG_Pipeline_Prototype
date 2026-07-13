@@ -18,9 +18,11 @@ A production-ready Retrieval Augmented Generation backend built with FastAPI, Go
 
 - app.py
 - FLOW_DIAGRAM.md
+- ARCHITECTURE_DIAGRAMS.md
 - config/settings.py
 - api/upload_controller.py
 - api/chat_controller.py
+- api/application_controller.py
 - services/vectorDbService.py
 - services/ragService.py
 - services/llmService.py
@@ -33,7 +35,9 @@ A production-ready Retrieval Augmented Generation backend built with FastAPI, Go
 - models/upload_request.py
 - models/chat_request.py
 - models/chat_response.py
+- models/application_request.py
 - chroma_storage/
+- frontend/
 - uploads/
 
 ## Architecture Overview
@@ -48,6 +52,8 @@ The backend follows a layered RAG pipeline:
 
 See the end-to-end flow here: [FLOW_DIAGRAM.md](FLOW_DIAGRAM.md)
 
+Detailed architecture/process/use-case diagrams are available at [ARCHITECTURE_DIAGRAMS.md](ARCHITECTURE_DIAGRAMS.md)
+
 ## Environment Setup
 
 Create a .env file in the project root:
@@ -60,6 +66,9 @@ GUIDELINES_DIR=./guidelines
 AUTO_INDEX_GUIDELINES=true
 TARGET_INDUSTRY=food_processing
 TARGET_GUIDELINE_STANDARD=fssai
+ENABLE_DATA_MASKING=true
+MASK_PII=true
+MASK_PHI=true
 ```
 
 ## Internal Guideline Assumption
@@ -88,6 +97,10 @@ uv pip install -r requirements.txt
 ```bash
 uvicorn app:app --reload --host 0.0.0.0 --port 8000
 ```
+
+Open the role-based UI at:
+
+- http://127.0.0.1:8000/
 
 ## API Examples
 
@@ -148,6 +161,24 @@ curl -X POST "http://127.0.0.1:8000/assessment/prototype" \
   -d '{
     "industry": "food_processing",
     "applicant_profile": "Industry: Food Processing. FSSAI license renewal due in 20 days. Two minor hygiene non-conformities in last audit. Batch traceability available for 70 percent lots. Working capital cycle 135 days."
+  }'
+```
+
+### MSME Application Receiver (JSON Form API)
+
+```bash
+curl -X POST "http://127.0.0.1:8000/application/submit" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "business_name": "FreshHarvest Foods",
+    "promoter_name": "Amit Sharma",
+    "annual_turnover_crore": 3.2,
+    "dscr": 1.08,
+    "gst_delay_months": 2,
+    "top_customer_revenue_percent": 52,
+    "working_capital_days": 135,
+    "existing_overdues_90_plus": false,
+    "notes": "Two hygiene non-conformities found in last audit"
   }'
 ```
 
