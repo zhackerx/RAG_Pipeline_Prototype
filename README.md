@@ -69,6 +69,8 @@ TARGET_GUIDELINE_STANDARD=fssai
 ENABLE_DATA_MASKING=true
 MASK_PII=true
 MASK_PHI=true
+AUTO_SEED_SAMPLE_DATA=true
+SAMPLE_DATA_DIR=./sample_data
 ```
 
 ## Internal Guideline Assumption
@@ -82,6 +84,13 @@ See repository convention: [guidelines/README.md](guidelines/README.md)
 - Target segment: MSME Food Processing
 - Guideline standard: FSSAI only
 - Retrieval scope: only `document_role=guideline` and `industry=food_processing`
+- Sample mode: applicant sample files are auto-seeded from `./sample_data` on startup
+
+## Behind-The-Scene Sample Data
+
+- Guideline samples are loaded from `./guidelines/food_processing`.
+- Applicant samples are loaded from `./sample_data`.
+- Both loads are idempotent (duplicates are skipped on restart).
 
 ## Install Dependencies
 
@@ -144,6 +153,17 @@ curl -X POST "http://127.0.0.1:8000/chat" \
   -d '{"question":"What is covered in the uploaded documents?"}'
 ```
 
+### Scoped Chatbot (Applicant + FSSAI Guideline Context)
+
+```bash
+curl -X POST "http://127.0.0.1:8000/chat/scoped" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "What are the key approval risks and mitigations for this applicant?",
+    "applicant_document_ids": ["<applicant_document_id>"]
+  }'
+```
+
 ### MSME Risk Assessment (Applicant PDF)
 
 ```bash
@@ -186,6 +206,12 @@ curl -X POST "http://127.0.0.1:8000/application/submit" \
 
 ```bash
 curl "http://127.0.0.1:8000/documents"
+```
+
+### List Applicant Documents (for Chat Scope)
+
+```bash
+curl "http://127.0.0.1:8000/documents/applicants"
 ```
 
 ### Delete Document

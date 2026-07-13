@@ -94,6 +94,11 @@ async def list_documents() -> list[dict[str, Any]]:
     return document_service.vector_db.list_documents()
 
 
+@router.get("/applicants", status_code=status.HTTP_200_OK)
+async def list_applicant_documents() -> list[dict[str, Any]]:
+    return document_service.vector_db.list_document_index(document_role="applicant")
+
+
 @router.get("/{document_id}", status_code=status.HTTP_200_OK)
 async def get_document(document_id: str) -> dict[str, Any]:
     return {"document_id": document_id, "chunks": document_service.vector_db.get_document(document_id)}

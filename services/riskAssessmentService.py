@@ -5,6 +5,7 @@ from config.settings import settings
 from services.llmService import LLMService
 from services.vectorDbService import VectorDbService
 from utils.pdfLoader import PDFLoader
+from utils.securityMaskingService import SecurityMaskingService
 
 
 class RiskAssessmentService:
@@ -21,6 +22,7 @@ FSSAI Food Processing Advisory Baseline
     def __init__(self) -> None:
         self.vector_db = VectorDbService()
         self.llm = LLMService()
+        self.masking_service = SecurityMaskingService()
 
     def _load_applicant_text(self, file_path: str | Path) -> str:
         loader = PDFLoader(file_path)
@@ -51,11 +53,13 @@ FSSAI Food Processing Advisory Baseline
 
     def assess_text(self, applicant_text: str, industry_override: str | None = None) -> dict[str, Any]:
         industry = settings.TARGET_INDUSTRY
-        guideline_context, guideline_chunks = self._get_guideline_context(industry, applicant_text)
+        masked = self.masking_service.mask_text(applicant_text)
+        safe_text = masked["text"]
+        guideline_context, guideline_chunks = self._get_guideline_context(industry, safe_text)
 
         result = self.llm.generate_risk_assessment(
             industry=industry,
-            applicant_text=applicant_text,
+            applicant_text=safe_text,
             guideline_context=guideline_context,
         )
 
@@ -78,6 +82,7 @@ FSSAI Food Processing Advisory Baseline
             ]
 
         result["guideline_chunks_used"] = len(guideline_chunks)
+    result["security"] = masked["summary"]
         return result
 
     def assess_pdf(self, file_path: str | Path) -> dict[str, Any]:

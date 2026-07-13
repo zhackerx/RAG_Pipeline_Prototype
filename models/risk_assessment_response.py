@@ -11,3 +11,4 @@ class RiskAssessmentResponse(BaseModel):
     missing_information: list[str] = Field(default_factory=list)
     guideline_sources: list[dict[str, object]] = Field(default_factory=list)
     guideline_chunks_used: int = Field(default=0)
+    security: dict[str, object] = Field(default_factory=dict)

@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, status
 
 from models.chat_request import ChatRequest
 from models.chat_response import ChatResponse
+from models.chat_scoped_request import ChatScopedRequest
 from services.ragService import RAGService
 
 logger = logging.getLogger(__name__)
@@ -18,4 +19,17 @@ async def chat(request: ChatRequest) -> ChatResponse:
         return ChatResponse(**result)
     except Exception as exc:  # pragma: no cover - defensive
         logger.exception("Chat request failed")
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/scoped", response_model=ChatResponse, status_code=status.HTTP_200_OK)
+async def chat_scoped(request: ChatScopedRequest) -> ChatResponse:
+    try:
+        result = rag_service.ask_question_scoped(
+            question=request.question,
+            applicant_document_ids=request.applicant_document_ids,
+        )
+        return ChatResponse(**result)
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.exception("Scoped chat request failed")
         raise HTTPException(status_code=500, detail=str(exc)) from exc

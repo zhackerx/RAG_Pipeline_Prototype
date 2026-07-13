@@ -8,6 +8,7 @@ from utils.chunkingService import ChunkingService
 from utils.excelLoader import ExcelLoader
 from utils.markdownLoader import MarkdownLoader
 from utils.pdfLoader import PDFLoader
+from utils.securityMaskingService import SecurityMaskingService
 from services.vectorDbService import VectorDbService
 
 logger = logging.getLogger(__name__)
@@ -17,6 +18,7 @@ class DocumentService:
     def __init__(self) -> None:
         self.vector_db = VectorDbService()
         self.chunking_service = ChunkingService(settings.CHUNK_SIZE, settings.CHUNK_OVERLAP)
+        self.masking_service = SecurityMaskingService()
         self.upload_dir = Path(settings.UPLOAD_DIR)
         self.upload_dir.mkdir(parents=True, exist_ok=True)
 
@@ -38,6 +40,9 @@ class DocumentService:
 
         loader = PDFLoader(destination)
         pages = loader.load()
+        for page in pages:
+            masked = self.masking_service.mask_text(str(page.get("content", "")))
+            page["content"] = masked["text"]
         chunks = self.chunking_service.chunk_pages(pages)
 
         for chunk in chunks:
@@ -71,6 +76,8 @@ class DocumentService:
 
         loader = MarkdownLoader(destination)
         text = loader.load()
+        masked = self.masking_service.mask_text(text)
+        text = masked["text"]
         chunks = self.chunking_service.chunk_text(text)
 
         for chunk in chunks:
@@ -103,6 +110,8 @@ class DocumentService:
 
         loader = ExcelLoader(destination)
         text = loader.load_as_text()
+        masked = self.masking_service.mask_text(text)
+        text = masked["text"]
         chunks = self.chunking_service.chunk_text(text)
 
         for chunk in chunks:

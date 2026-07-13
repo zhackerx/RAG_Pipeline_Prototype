@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     AUTO_INDEX_GUIDELINES: bool = True
     TARGET_INDUSTRY: str = "food_processing"
     TARGET_GUIDELINE_STANDARD: str = "fssai"
+    ENABLE_DATA_MASKING: bool = True
+    MASK_PII: bool = True
+    MASK_PHI: bool = True
+    AUTO_SEED_SAMPLE_DATA: bool = True
+    SAMPLE_DATA_DIR: str = "./sample_data"
 
 
 settings = Settings()

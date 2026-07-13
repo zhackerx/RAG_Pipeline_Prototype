@@ -71,6 +71,26 @@ class VectorDbService:
     def list_documents(self) -> list[dict[str, Any]]:
         return self.vector_store.get().get("metadatas", [])
 
+    def list_document_index(self, document_role: str | None = None) -> list[dict[str, Any]]:
+        where = {"document_role": document_role} if document_role else None
+        docs = self.vector_store.get(where=where)
+        metadatas = docs.get("metadatas", [])
+
+        index: dict[str, dict[str, Any]] = {}
+        for metadata in metadatas:
+            document_id = str(metadata.get("document_id", ""))
+            if not document_id:
+                continue
+            if document_id not in index:
+                index[document_id] = {
+                    "document_id": document_id,
+                    "source": metadata.get("source", "unknown"),
+                    "document_role": metadata.get("document_role", ""),
+                    "industry": metadata.get("industry", ""),
+                    "uploaded_at": metadata.get("uploaded_at", ""),
+                }
+        return list(index.values())
+
     def guideline_exists(self, source: str, industry: str) -> bool:
         docs = self.vector_store.get(
             where={
@@ -82,6 +102,17 @@ class VectorDbService:
             },
             limit=1,
         )
+        return bool(docs.get("ids"))
+
+    def document_exists(self, source: str, document_role: str, industry: str | None = None) -> bool:
+        conditions: list[dict[str, Any]] = [
+            {"document_role": document_role},
+            {"source": source},
+        ]
+        if industry is not None:
+            conditions.append({"industry": industry.strip().lower()})
+
+        docs = self.vector_store.get(where={"$and": conditions}, limit=1)
         return bool(docs.get("ids"))
 
     def update_document(
