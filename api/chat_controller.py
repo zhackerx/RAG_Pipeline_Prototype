@@ -1,4 +1,5 @@
 import logging
+from typing import cast
 
 from fastapi import APIRouter, HTTPException, status
 
@@ -10,13 +11,20 @@ from services.llmService import LLMTemporarilyUnavailableError
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["chat"])
-rag_service = RAGService()
+rag_service: RAGService | None = None
+
+
+def get_rag_service() -> RAGService:
+    global rag_service
+    if rag_service is None:
+        rag_service = RAGService()
+    return cast(RAGService, rag_service)
 
 
 @router.post("", response_model=ChatResponse, status_code=status.HTTP_200_OK)
 async def chat(request: ChatRequest) -> ChatResponse:
     try:
-        result = rag_service.ask_question(request.question)
+        result = get_rag_service().ask_question(request.question)
         return ChatResponse(**result)
     except LLMTemporarilyUnavailableError as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
@@ -28,7 +36,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
 @router.post("/scoped", response_model=ChatResponse, status_code=status.HTTP_200_OK)
 async def chat_scoped(request: ChatScopedRequest) -> ChatResponse:
     try:
-        result = rag_service.ask_question_scoped(
+        result = get_rag_service().ask_question_scoped(
             question=request.question,
             applicant_document_ids=request.applicant_document_ids,
         )

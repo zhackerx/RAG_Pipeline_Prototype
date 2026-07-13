@@ -1,4 +1,5 @@
 import logging
+from typing import cast
 
 from fastapi import APIRouter, HTTPException, status
 
@@ -9,7 +10,14 @@ from services.riskAssessmentService import RiskAssessmentService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/application", tags=["application"])
-risk_service = RiskAssessmentService()
+risk_service: RiskAssessmentService | None = None
+
+
+def get_risk_service() -> RiskAssessmentService:
+    global risk_service
+    if risk_service is None:
+        risk_service = RiskAssessmentService()
+    return cast(RiskAssessmentService, risk_service)
 
 
 @router.post("/submit", response_model=RiskAssessmentResponse, status_code=status.HTTP_200_OK)
@@ -27,7 +35,7 @@ async def submit_application(request: ApplicationRequest) -> RiskAssessmentRespo
             f"Overdues 90+ days: {request.existing_overdues_90_plus}. "
             f"Notes: {request.notes}"
         )
-        result = risk_service.assess_text(applicant_profile, industry_override=settings.TARGET_INDUSTRY)
+        result = get_risk_service().assess_text(applicant_profile, industry_override=settings.TARGET_INDUSTRY)
         return RiskAssessmentResponse(**result)
     except Exception as exc:  # pragma: no cover - defensive
         logger.exception("Application submission failed")

@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 from typing import Any
+from typing import cast
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 
@@ -9,7 +10,14 @@ from services.documentService import DocumentService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/documents", tags=["documents"])
-document_service = DocumentService()
+document_service: DocumentService | None = None
+
+
+def get_document_service() -> DocumentService:
+    global document_service
+    if document_service is None:
+        document_service = DocumentService()
+    return cast(DocumentService, document_service)
 
 
 @router.post("/upload/pdf", status_code=status.HTTP_201_CREATED)
@@ -24,7 +32,7 @@ async def upload_pdf(
         contents = await file.read()
         temp_path.write_bytes(contents)
         effective_industry = settings.TARGET_INDUSTRY if document_role.lower() == "guideline" else industry
-        result = document_service.upload_pdf(temp_path, document_role=document_role, industry=effective_industry)
+        result = get_document_service().upload_pdf(temp_path, document_role=document_role, industry=effective_industry)
         return {"message": "PDF uploaded successfully", **result}
     except Exception as exc:  # pragma: no cover - defensive
         logger.exception("PDF upload failed")
@@ -43,7 +51,7 @@ async def upload_markdown(
         contents = await file.read()
         temp_path.write_bytes(contents)
         effective_industry = settings.TARGET_INDUSTRY if document_role.lower() == "guideline" else industry
-        result = document_service.upload_markdown(temp_path, document_role=document_role, industry=effective_industry)
+        result = get_document_service().upload_markdown(temp_path, document_role=document_role, industry=effective_industry)
         return {"message": "Markdown uploaded successfully", **result}
     except Exception as exc:  # pragma: no cover - defensive
         logger.exception("Markdown upload failed")
@@ -62,7 +70,7 @@ async def upload_excel(
         contents = await file.read()
         temp_path.write_bytes(contents)
         effective_industry = settings.TARGET_INDUSTRY if document_role.lower() == "guideline" else industry
-        result = document_service.upload_excel(temp_path, document_role=document_role, industry=effective_industry)
+        result = get_document_service().upload_excel(temp_path, document_role=document_role, industry=effective_industry)
         return {"message": "Excel uploaded successfully", **result}
     except Exception as exc:  # pragma: no cover - defensive
         logger.exception("Excel upload failed")
@@ -71,7 +79,7 @@ async def upload_excel(
 
 @router.delete("/{document_id}", status_code=status.HTTP_200_OK)
 async def delete_document(document_id: str) -> dict[str, str]:
-    document_service.delete_document(document_id)
+    get_document_service().delete_document(document_id)
     return {"message": "Document deleted successfully", "document_id": document_id}
 
 
@@ -82,7 +90,7 @@ async def reindex_document(document_id: str, file: UploadFile = File(...)) -> di
         temp_path.parent.mkdir(parents=True, exist_ok=True)
         contents = await file.read()
         temp_path.write_bytes(contents)
-        result = document_service.reindex_document(document_id, temp_path)
+        result = get_document_service().reindex_document(document_id, temp_path)
         return {"message": "Document re-indexed successfully", **result}
     except Exception as exc:  # pragma: no cover - defensive
         logger.exception("Document re-indexing failed")
@@ -91,14 +99,14 @@ async def reindex_document(document_id: str, file: UploadFile = File(...)) -> di
 
 @router.get("", status_code=status.HTTP_200_OK)
 async def list_documents() -> list[dict[str, Any]]:
-    return document_service.vector_db.list_documents()
+    return get_document_service().vector_db.list_documents()
 
 
 @router.get("/applicants", status_code=status.HTTP_200_OK)
 async def list_applicant_documents() -> list[dict[str, Any]]:
-    return document_service.vector_db.list_document_index(document_role="applicant")
+    return get_document_service().vector_db.list_document_index(document_role="applicant")
 
 
 @router.get("/{document_id}", status_code=status.HTTP_200_OK)
 async def get_document(document_id: str) -> dict[str, Any]:
-    return {"document_id": document_id, "chunks": document_service.vector_db.get_document(document_id)}
+    return {"document_id": document_id, "chunks": get_document_service().vector_db.get_document(document_id)}

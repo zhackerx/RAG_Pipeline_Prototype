@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from typing import cast
 
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
 
@@ -9,7 +10,14 @@ from services.riskAssessmentService import RiskAssessmentService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/assessment", tags=["assessment"])
-risk_service = RiskAssessmentService()
+risk_service: RiskAssessmentService | None = None
+
+
+def get_risk_service() -> RiskAssessmentService:
+    global risk_service
+    if risk_service is None:
+        risk_service = RiskAssessmentService()
+    return cast(RiskAssessmentService, risk_service)
 
 
 @router.post("/upload/pdf", response_model=RiskAssessmentResponse, status_code=status.HTTP_200_OK)
@@ -20,7 +28,7 @@ async def assess_uploaded_pdf(file: UploadFile = File(...)) -> RiskAssessmentRes
         contents = await file.read()
         temp_path.write_bytes(contents)
 
-        result = risk_service.assess_pdf(temp_path)
+        result = get_risk_service().assess_pdf(temp_path)
         return RiskAssessmentResponse(**result)
     except Exception as exc:  # pragma: no cover - defensive
         logger.exception("Risk assessment failed")
@@ -30,7 +38,7 @@ async def assess_uploaded_pdf(file: UploadFile = File(...)) -> RiskAssessmentRes
 @router.post("/prototype", response_model=RiskAssessmentResponse, status_code=status.HTTP_200_OK)
 async def assess_prototype(request: RiskAssessmentRequest) -> RiskAssessmentResponse:
     try:
-        result = risk_service.assess_text(
+        result = get_risk_service().assess_text(
             applicant_text=request.applicant_profile,
             industry_override=request.industry,
         )
