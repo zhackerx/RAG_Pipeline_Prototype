@@ -1,4 +1,5 @@
 import logging
+from asyncio import Task, create_task, to_thread
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -21,18 +22,30 @@ logging.basicConfig(
 logger = logging.getLogger("rag_app")
 
 
+async def _run_startup_preloads() -> None:
+    try:
+        if settings.AUTO_INDEX_GUIDELINES:
+            bootstrap = GuidelineBootstrapService()
+            stats = await to_thread(bootstrap.bootstrap)
+            logger.info("Guideline preload completed: %s", stats)
+        if settings.AUTO_SEED_SAMPLE_DATA:
+            sample_service = SampleDataService()
+            sample_stats = await to_thread(sample_service.seed)
+            logger.info("Sample data preload completed: %s", sample_stats)
+    except Exception:
+        logger.exception("Startup preload job failed")
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     logger.info("Starting RAG application")
-    if settings.AUTO_INDEX_GUIDELINES:
-        bootstrap = GuidelineBootstrapService()
-        stats = bootstrap.bootstrap()
-        logger.info("Guideline preload completed: %s", stats)
-    if settings.AUTO_SEED_SAMPLE_DATA:
-        sample_service = SampleDataService()
-        sample_stats = sample_service.seed()
-        logger.info("Sample data preload completed: %s", sample_stats)
+    preload_task: Task[None] | None = None
+    if settings.AUTO_INDEX_GUIDELINES or settings.AUTO_SEED_SAMPLE_DATA:
+        preload_task = create_task(_run_startup_preloads())
+        logger.info("Startup preload scheduled in background")
     yield
+    if preload_task and not preload_task.done():
+        preload_task.cancel()
     logger.info("Stopping RAG application")
 
 
