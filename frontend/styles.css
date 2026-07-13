@@ -171,6 +171,16 @@ button:hover {
   margin-bottom: 0.6rem;
 }
 
+.ui-status {
+  margin: 0 0 0.6rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 8px;
+  background: #f4ecdd;
+  color: #5f461f;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
 .bubble {
   width: fit-content;
   max-width: 95%;
