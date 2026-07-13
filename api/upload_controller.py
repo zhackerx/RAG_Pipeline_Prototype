@@ -2,8 +2,9 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 
+from config.settings import settings
 from services.documentService import DocumentService
 
 logger = logging.getLogger(__name__)
@@ -12,13 +13,18 @@ document_service = DocumentService()
 
 
 @router.post("/upload/pdf", status_code=status.HTTP_201_CREATED)
-async def upload_pdf(file: UploadFile = File(...)) -> dict[str, Any]:
+async def upload_pdf(
+    file: UploadFile = File(...),
+    document_role: str = Form("applicant"),
+    industry: str | None = Form(None),
+) -> dict[str, Any]:
     try:
         temp_path = Path(f"./uploads/{file.filename}")
         temp_path.parent.mkdir(parents=True, exist_ok=True)
         contents = await file.read()
         temp_path.write_bytes(contents)
-        result = document_service.upload_pdf(temp_path)
+        effective_industry = settings.TARGET_INDUSTRY if document_role.lower() == "guideline" else industry
+        result = document_service.upload_pdf(temp_path, document_role=document_role, industry=effective_industry)
         return {"message": "PDF uploaded successfully", **result}
     except Exception as exc:  # pragma: no cover - defensive
         logger.exception("PDF upload failed")
@@ -26,16 +32,40 @@ async def upload_pdf(file: UploadFile = File(...)) -> dict[str, Any]:
 
 
 @router.post("/upload/markdown", status_code=status.HTTP_201_CREATED)
-async def upload_markdown(file: UploadFile = File(...)) -> dict[str, Any]:
+async def upload_markdown(
+    file: UploadFile = File(...),
+    document_role: str = Form("applicant"),
+    industry: str | None = Form(None),
+) -> dict[str, Any]:
     try:
         temp_path = Path(f"./uploads/{file.filename}")
         temp_path.parent.mkdir(parents=True, exist_ok=True)
         contents = await file.read()
         temp_path.write_bytes(contents)
-        result = document_service.upload_markdown(temp_path)
+        effective_industry = settings.TARGET_INDUSTRY if document_role.lower() == "guideline" else industry
+        result = document_service.upload_markdown(temp_path, document_role=document_role, industry=effective_industry)
         return {"message": "Markdown uploaded successfully", **result}
     except Exception as exc:  # pragma: no cover - defensive
         logger.exception("Markdown upload failed")
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/upload/excel", status_code=status.HTTP_201_CREATED)
+async def upload_excel(
+    file: UploadFile = File(...),
+    document_role: str = Form("guideline"),
+    industry: str | None = Form(None),
+) -> dict[str, Any]:
+    try:
+        temp_path = Path(f"./uploads/{file.filename}")
+        temp_path.parent.mkdir(parents=True, exist_ok=True)
+        contents = await file.read()
+        temp_path.write_bytes(contents)
+        effective_industry = settings.TARGET_INDUSTRY if document_role.lower() == "guideline" else industry
+        result = document_service.upload_excel(temp_path, document_role=document_role, industry=effective_industry)
+        return {"message": "Excel uploaded successfully", **result}
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.exception("Excel upload failed")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 

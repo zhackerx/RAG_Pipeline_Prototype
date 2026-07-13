@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     GEMINI_LLM_MODEL: str = "gemini-3.5-flash" #gemini-3.5-flash
     EMBEDDING_MODEL: str = "models/gemini-embedding-001"
     COLLECTION_NAME: str = "rag_documents"
+    GUIDELINES_DIR: str = "./guidelines"
+    AUTO_INDEX_GUIDELINES: bool = True
+    TARGET_INDUSTRY: str = "food_processing"
+    TARGET_GUIDELINE_STANDARD: str = "fssai"
 
 
 settings = Settings()

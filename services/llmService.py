@@ -1,4 +1,5 @@
 import logging
+import json
 from typing import Any
 
 # Import the unified Google Gen AI library
@@ -28,3 +29,31 @@ class LLMService:
         
         answer_text = getattr(response, "text", "") or ""
         return {"answer": answer_text, "sources": []}
+
+    def generate_risk_assessment(self, industry: str, applicant_text: str, guideline_context: str) -> dict[str, Any]:
+        prompt = PromptBuilder.build_risk_assessment_prompt(
+            industry=industry,
+            applicant_text=applicant_text,
+            guideline_context=guideline_context,
+        )
+
+        response = self.client.models.generate_content(
+            model=self.model_name,
+            contents=prompt,
+        )
+        answer_text = getattr(response, "text", "") or ""
+
+        try:
+            parsed = json.loads(answer_text)
+            return parsed
+        except json.JSONDecodeError:
+            # Fallback if model returns non-JSON text.
+            return {
+                "industry": industry,
+                "risk_score": 50,
+                "risk_level": "MEDIUM",
+                "summary": answer_text.strip() or "Unable to parse model assessment.",
+                "key_risk_factors": [],
+                "advisory_notes": ["Model output was not valid JSON."],
+                "missing_information": ["Structured output parsing failed."],
+            }

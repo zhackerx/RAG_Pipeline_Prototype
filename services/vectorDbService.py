@@ -17,7 +17,16 @@ class VectorDbService:
             persist_directory=settings.CHROMA_PATH,
         )
 
-    def insert_chunks(self, chunks: list[dict[str, Any]], document_id: str, source: str, file_type: str, uploaded_at: str) -> None:
+    def insert_chunks(
+        self,
+        chunks: list[dict[str, Any]],
+        document_id: str,
+        source: str,
+        file_type: str,
+        uploaded_at: str,
+        document_role: str = "applicant",
+        industry: str | None = None,
+    ) -> None:
         for chunk in chunks:
             text = chunk["text"]
             metadata = {
@@ -27,14 +36,19 @@ class VectorDbService:
                 "chunk_id": chunk["chunk_id"],
                 "file_type": file_type,
                 "uploaded_at": uploaded_at,
+                "document_role": document_role,
+                "industry": (industry or "").strip().lower(),
             }
             self.vector_store.add_texts(
                 texts=[text],
                 metadatas=[metadata],
             )
 
-    def search_similar_chunks(self, query: str, top_k: int = 5) -> list[dict[str, Any]]:
-        docs = self.vector_store.similarity_search_with_score(query, k=top_k)
+    def search_similar_chunks(self, query: str, top_k: int = 5, where: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        if where:
+            docs = self.vector_store.similarity_search_with_score(query, k=top_k, filter=where)
+        else:
+            docs = self.vector_store.similarity_search_with_score(query, k=top_k)
         results: list[dict[str, Any]] = []
         for doc, score in docs:
             results.append(
@@ -57,6 +71,28 @@ class VectorDbService:
     def list_documents(self) -> list[dict[str, Any]]:
         return self.vector_store.get().get("metadatas", [])
 
-    def update_document(self, document_id: str, chunks: list[dict[str, Any]], source: str, file_type: str, uploaded_at: str) -> None:
+    def guideline_exists(self, source: str, industry: str) -> bool:
+        docs = self.vector_store.get(
+            where={
+                "$and": [
+                    {"document_role": "guideline"},
+                    {"source": source},
+                    {"industry": industry.strip().lower()},
+                ]
+            },
+            limit=1,
+        )
+        return bool(docs.get("ids"))
+
+    def update_document(
+        self,
+        document_id: str,
+        chunks: list[dict[str, Any]],
+        source: str,
+        file_type: str,
+        uploaded_at: str,
+        document_role: str = "applicant",
+        industry: str | None = None,
+    ) -> None:
         self.delete_document(document_id)
-        self.insert_chunks(chunks, document_id, source, file_type, uploaded_at)
+        self.insert_chunks(chunks, document_id, source, file_type, uploaded_at, document_role=document_role, industry=industry)

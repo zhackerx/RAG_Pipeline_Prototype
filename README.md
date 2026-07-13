@@ -5,15 +5,19 @@ A production-ready Retrieval Augmented Generation backend built with FastAPI, Go
 ## Features
 
 - Upload PDF or Markdown documents
+- Upload Excel guideline matrices (terms and score factors)
 - Chunk and embed content
 - Store embeddings in ChromaDB
 - Query the indexed knowledge base with conversational RAG
 - Return source references and page numbers when available
 - Re-index and delete documents
+- Industry-aware domain routing for guideline retrieval
+- MSME risk scoring (LOW/MEDIUM/HIGH) for loan advisory support
 
 ## Project Structure
 
 - app.py
+- FLOW_DIAGRAM.md
 - config/settings.py
 - api/upload_controller.py
 - api/chat_controller.py
@@ -32,6 +36,18 @@ A production-ready Retrieval Augmented Generation backend built with FastAPI, Go
 - chroma_storage/
 - uploads/
 
+## Architecture Overview
+
+The backend follows a layered RAG pipeline:
+
+- API layer (`app.py`, `api/*`) handles HTTP requests for upload and chat.
+- Service layer (`services/*`) orchestrates ingestion, retrieval, and generation.
+- Utility layer (`utils/*`) performs loading, chunking, embedding setup, and prompt building.
+- Storage layer (ChromaDB in `./chroma_storage`) persists vectorized chunks and metadata.
+- Model layer (Google Gemini) is used for both embeddings and final answer generation.
+
+See the end-to-end flow here: [FLOW_DIAGRAM.md](FLOW_DIAGRAM.md)
+
 ## Environment Setup
 
 Create a .env file in the project root:
@@ -40,7 +56,23 @@ Create a .env file in the project root:
 GEMINI_API_KEY=your_google_gemini_api_key
 CHROMA_PATH=./chroma_storage
 UPLOAD_DIR=./uploads
+GUIDELINES_DIR=./guidelines
+AUTO_INDEX_GUIDELINES=true
+TARGET_INDUSTRY=food_processing
+TARGET_GUIDELINE_STANDARD=fssai
 ```
+
+## Internal Guideline Assumption
+
+If all bank guidelines are internally available, place them under `./guidelines` and the app will auto-index them at startup.
+
+See repository convention: [guidelines/README.md](guidelines/README.md)
+
+## Current Prototype Scope
+
+- Target segment: MSME Food Processing
+- Guideline standard: FSSAI only
+- Retrieval scope: only `document_role=guideline` and `industry=food_processing`
 
 ## Install Dependencies
 
@@ -73,12 +105,50 @@ curl -X POST "http://127.0.0.1:8000/documents/upload/markdown" \
   -F "file=@sample.md"
 ```
 
+### Upload Guideline PDF (Industry Tagged)
+
+```bash
+curl -X POST "http://127.0.0.1:8000/documents/upload/pdf" \
+  -F "file=@fssai_food_processing_guideline.pdf" \
+  -F "document_role=guideline" \
+  -F "industry=food_processing"
+```
+
+### Upload Guideline Excel (Industry Tagged)
+
+```bash
+curl -X POST "http://127.0.0.1:8000/documents/upload/excel" \
+  -F "file=@fssai_scoring_matrix.xlsx" \
+  -F "document_role=guideline" \
+  -F "industry=food_processing"
+```
+
 ### Chat
 
 ```bash
 curl -X POST "http://127.0.0.1:8000/chat" \
   -H "Content-Type: application/json" \
   -d '{"question":"What is covered in the uploaded documents?"}'
+```
+
+### MSME Risk Assessment (Applicant PDF)
+
+```bash
+curl -X POST "http://127.0.0.1:8000/assessment/upload/pdf" \
+  -F "file=@msme_application.pdf"
+```
+
+### Prototype Risk Assessment (No PDF Required)
+
+Use this for quick demos with sample data or existing Chroma guideline data.
+
+```bash
+curl -X POST "http://127.0.0.1:8000/assessment/prototype" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "industry": "food_processing",
+    "applicant_profile": "Industry: Food Processing. FSSAI license renewal due in 20 days. Two minor hygiene non-conformities in last audit. Batch traceability available for 70 percent lots. Working capital cycle 135 days."
+  }'
 ```
 
 ### List Documents
