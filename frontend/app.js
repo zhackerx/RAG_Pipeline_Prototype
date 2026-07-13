@@ -24,12 +24,26 @@ function appendChat(role, message) {
   thread.scrollTop = thread.scrollHeight;
 }
 
+function updateScopeBadge() {
+  const select = document.getElementById("applicant-doc-select");
+  const badge = document.getElementById("scope-badge");
+  const selectedDocIds = Array.from(select.selectedOptions)
+    .map((opt) => opt.value)
+    .filter((value) => value);
+
+  if (selectedDocIds.length === 0) {
+    badge.textContent = "Scope: All Applicant Docs";
+    return;
+  }
+  badge.textContent = `Scope: ${selectedDocIds.length} Selected Doc(s)`;
+}
+
 async function loadApplicantDocuments() {
   const select = document.getElementById("applicant-doc-select");
   select.innerHTML = "";
   const defaultOpt = document.createElement("option");
   defaultOpt.value = "";
-  defaultOpt.textContent = "Select applicant document";
+  defaultOpt.textContent = "No selection = use all uploaded applicant docs";
   select.appendChild(defaultOpt);
 
   const res = await fetch("/documents/applicants");
@@ -40,6 +54,7 @@ async function loadApplicantDocuments() {
     opt.textContent = `${doc.source} (${doc.document_id.slice(0, 8)})`;
     select.appendChild(opt);
   }
+  updateScopeBadge();
 }
 
 document.getElementById("admin-upload-form").addEventListener("submit", async (event) => {
@@ -98,12 +113,15 @@ document.getElementById("query-form").addEventListener("submit", async (event) =
   const resultEl = document.getElementById("query-result");
   try {
     const question = document.getElementById("query-text").value;
-    const selectedDocId = document.getElementById("applicant-doc-select").value;
+    const select = document.getElementById("applicant-doc-select");
+    const selectedDocIds = Array.from(select.selectedOptions)
+      .map((opt) => opt.value)
+      .filter((value) => value);
     appendChat("user", question);
 
     const data = await postJson("/chat/scoped", {
       question,
-      applicant_document_ids: selectedDocId ? [selectedDocId] : [],
+      applicant_document_ids: selectedDocIds,
     });
     appendChat("bot", data.answer || "No response generated.");
     pretty(resultEl, data);
@@ -122,6 +140,8 @@ document.getElementById("refresh-docs").addEventListener("click", async () => {
     resultEl.textContent = `Error: ${error.message}`;
   }
 });
+
+document.getElementById("applicant-doc-select").addEventListener("change", updateScopeBadge);
 
 loadApplicantDocuments().catch((error) => {
   const resultEl = document.getElementById("query-result");
