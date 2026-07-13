@@ -49,12 +49,22 @@ app.include_router(assessment_router)
 app.include_router(application_router)
 
 frontend_dir = Path(__file__).parent / "frontend"
-app.mount("/frontend", StaticFiles(directory=str(frontend_dir)), name="frontend")
+frontend_available = frontend_dir.exists() and frontend_dir.is_dir()
+if frontend_available:
+    app.mount("/frontend", StaticFiles(directory=str(frontend_dir)), name="frontend")
+else:
+    logger.warning("Frontend directory not found at startup: %s", frontend_dir)
 
 
 @app.get("/")
-async def home() -> FileResponse:
-    return FileResponse(frontend_dir / "index.html")
+async def home() -> FileResponse | dict[str, str]:
+    if frontend_available:
+        return FileResponse(frontend_dir / "index.html")
+    return {
+        "status": "ok",
+        "service": "rag-api",
+        "message": "Frontend assets not found in this deployment package. Use /docs for API.",
+    }
 
 
 @app.get("/health")
