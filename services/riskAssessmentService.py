@@ -82,7 +82,7 @@ FSSAI Food Processing Advisory Baseline
             ]
 
         result["guideline_chunks_used"] = len(guideline_chunks)
-    result["security"] = masked["summary"]
+        result["security"] = masked["summary"]
         return result
 
     def assess_pdf(self, file_path: str | Path) -> dict[str, Any]:
