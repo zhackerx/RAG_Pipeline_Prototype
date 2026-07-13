@@ -92,6 +92,27 @@ See repository convention: [guidelines/README.md](guidelines/README.md)
 - Applicant samples are loaded from `./sample_data`.
 - Both loads are idempotent (duplicates are skipped on restart).
 
+Additional sample artifacts are available in `sample_data/`:
+
+- `sample_data/pdf/fssai_guideline_food_processing_sample.pdf`
+- `sample_data/pdf/msme_applicant_profile_sensitive_sample.pdf`
+- `sample_data/payloads/masking_test_user_profile.json`
+- `sample_data/questions/msme_officer_questions.md`
+
+Quick test commands:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/documents/upload/pdf" \
+  -F "file=@sample_data/pdf/fssai_guideline_food_processing_sample.pdf" \
+  -F "document_role=guideline" \
+  -F "industry=food_processing"
+
+curl -X POST "http://127.0.0.1:8000/documents/upload/pdf" \
+  -F "file=@sample_data/pdf/msme_applicant_profile_sensitive_sample.pdf" \
+  -F "document_role=applicant" \
+  -F "industry=food_processing"
+```
+
 ## Install Dependencies
 
 Using uv:

@@ -29,14 +29,19 @@ class RAGService:
         }
         chunks.extend(self.vector_db.search_similar_chunks(question, top_k=settings.TOP_K, where=guideline_filter))
 
-        for document_id in applicant_document_ids:
-            applicant_filter = {
-                "$and": [
-                    {"document_role": "applicant"},
-                    {"document_id": document_id},
-                ]
-            }
-            chunks.extend(self.vector_db.search_similar_chunks(question, top_k=settings.TOP_K, where=applicant_filter))
+        if applicant_document_ids:
+            for document_id in applicant_document_ids:
+                applicant_filter = {
+                    "$and": [
+                        {"document_role": "applicant"},
+                        {"document_id": document_id},
+                    ]
+                }
+                chunks.extend(self.vector_db.search_similar_chunks(question, top_k=settings.TOP_K, where=applicant_filter))
+        else:
+            # If user does not select a specific document, search all uploaded applicant data.
+            all_applicant_filter = {"document_role": "applicant"}
+            chunks.extend(self.vector_db.search_similar_chunks(question, top_k=settings.TOP_K, where=all_applicant_filter))
 
         # Keep top relevant items after merging guideline and applicant retrieval.
         chunks.sort(key=lambda item: float(item.get("score", 0.0)))
