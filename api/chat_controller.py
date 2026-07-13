@@ -6,6 +6,7 @@ from models.chat_request import ChatRequest
 from models.chat_response import ChatResponse
 from models.chat_scoped_request import ChatScopedRequest
 from services.ragService import RAGService
+from services.llmService import LLMTemporarilyUnavailableError
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -17,6 +18,8 @@ async def chat(request: ChatRequest) -> ChatResponse:
     try:
         result = rag_service.ask_question(request.question)
         return ChatResponse(**result)
+    except LLMTemporarilyUnavailableError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     except Exception as exc:  # pragma: no cover - defensive
         logger.exception("Chat request failed")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -30,6 +33,8 @@ async def chat_scoped(request: ChatScopedRequest) -> ChatResponse:
             applicant_document_ids=request.applicant_document_ids,
         )
         return ChatResponse(**result)
+    except LLMTemporarilyUnavailableError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     except Exception as exc:  # pragma: no cover - defensive
         logger.exception("Scoped chat request failed")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
