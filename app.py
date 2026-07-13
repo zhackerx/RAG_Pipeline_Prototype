@@ -69,7 +69,7 @@ else:
     logger.warning("Frontend directory not found at startup: %s", frontend_dir)
 
 
-@app.get("/")
+@app.get("/", response_model=None)
 async def home() -> FileResponse | dict[str, str]:
     if frontend_available:
         return FileResponse(frontend_dir / "index.html")
